@@ -5,7 +5,6 @@ in brackets.
 from enum import Enum
 from discord import Embed
 from minoshiro import Medium, Minoshiro, Site
-import asyncio
 import re
 
 

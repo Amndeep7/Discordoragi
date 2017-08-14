@@ -4,7 +4,6 @@ Discord bot port of roboragi
 from discord.ext.commands import Bot
 import yaml
 from time import time
-from asyncio import get_event_loop
 from aiohttp_wrapper import SessionManager
 from helpers.discord_helpers import get_name_with_discriminator
 from helpers import PostgresController
@@ -34,7 +33,7 @@ class Discordoragi(Bot):
         self.logger = self.__get_logger()
         self.session_manager = SessionManager()
         super().__init__('?~')
-    
+
     @classmethod
     async def get_bot(cls):
         bot_instance = cls()
