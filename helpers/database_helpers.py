@@ -88,7 +88,7 @@ class PostgresController():
     async def add_request(self, request):
         """
         Adds a request to the database
-        :param request: a dict containing the info to put 
+        :param request: a dict containing the info to put
             into the database
         """
         sql = """
@@ -96,13 +96,14 @@ class PostgresController():
         VALUES ($1, $2, $3, $4);
         """.format(self.schema)
         try:
-             await self.pool.execute(sql,
-                    request['requester_id'],
-                    request['server_id'],
-                    request['medium'].value,
-                    request['title'])
-        except:
-            self.logger.warining(f'Exception occured white adding request: {e}')
+            await self.pool.execute(sql,
+                                    request['requester_id'],
+                                    request['server_id'],
+                                    request['medium'].value,
+                                    request['title'])
+        except Exception as e:
+            self.logger.warining(
+                f'Exception occured white adding request: {e}')
 
     async def add_server(self, server_id):
         """
@@ -114,8 +115,8 @@ class PostgresController():
         VALUES ($1) ON CONFLICT DO NOTHING;
         """.format(self.schema)
         try:
-             await self.pool.execute(sql, server_id)
-        except:
+            await self.pool.execute(sql, server_id)
+        except Exception as e:
             self.logger.warining(f'Exception occured while adding server: {e}')
 
     async def toggle_server_setting(self, server_id, setting):
@@ -129,6 +130,6 @@ class PostgresController():
         WHERE server = ($2);
         """.format(self.schema, setting, setting)
         try:
-             await self.pool.execute(sql, setting, server_id)
-        except:
+            await self.pool.execute(sql, setting, server_id)
+        except Exception as e:
             self.logger.warining(f'Exception occured while adding server: {e}')
