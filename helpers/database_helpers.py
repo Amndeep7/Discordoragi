@@ -128,8 +128,51 @@ class PostgresController():
         UPDATE {}.servers
         SET ($1) = NOT ($1)
         WHERE server = ($2);
-        """.format(self.schema, setting, setting)
+        """.format(self.schema)
         try:
             await self.pool.execute(sql, setting, server_id)
         except Exception as e:
             self.logger.warining(f'Exception occured while adding server: {e}')
+
+    async def __total_requests(self):
+        sql = """
+        SELECT count(*) from {}.requests;
+        """.format(self.schema)
+        try:
+            return await int(self.pool.fetchone(sql)[0])
+        except Exception as e:
+            self.logger.warining(
+                f'Exception occured while getting total requests: {e}')
+
+    async def get_server_setting(self, server_id, setting) -> bool:
+        sql = """
+        SELECT {} FROM {}.servers
+        WHERE server = ($1);""".format(setting, self.schema)
+        return await self.fetchval(sql, server_id)
+
+    async def get_user_stats(self, user_id) -> dict:
+        user_stats = {}
+        user_stats['total_requests'] = await self.__total_requests()
+
+        user_request_sql = """
+        SELECT COUNT(*) FROM {}.requests
+        WHERE requester = ($1);
+        """.format(self.schema)
+        try:
+            await self.pool.execute(user_request_sql, user_id)
+            user_stats['user_requests'] = int(self.pool.fetchone()[0])
+        except Exception as e:
+            self.logger.warining(
+                f'Exception occured while getting user requests: {e}')
+
+        top_requests_sql = """
+        SELECT name, type, COUNT(name) FROM {}.requests
+        WHERE requester = ($1)
+        GROUP BY name, type ORDER BY COUNT(name) DESC, name ASC LIMIT 5
+        """.format(self.schema)
+        top_requests = await self.pool.fetchall(top_requests_sql, user_id)
+        user_stats['top_requests'] = []
+        for request in top_requests:
+            user_stats['top_requests'].append(request)
+
+        return user_stats
