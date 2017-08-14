@@ -1,3 +1,5 @@
+### THIS IS CURRENTLY IN THE PROCESS OF BEING REWRITTEN FOR THE MINOSHIRO LIBRARY/ DISCORD.PY REWRITE, NOT ALL FEATURES ARE PRESENT YET
+
 # Discordoragi
 Discordoragi is a Discord bot using the [Minoshiro](https://github.com/Mino-shiro/Minoshiro) library which creates anime and manga links from MAL, Anilist, MangaUpdates and Anime-Planet when requested. This is a full port of the [roboragi](https://github.com/Nihilate/Roboragi) reddit bot to discord.
 
