@@ -84,3 +84,51 @@ class PostgresController():
         await make_tables(pool, schema)
         logger.info('Tables created.')
         return cls(pool, logger, schema)
+
+    async def add_request(self, request):
+        """
+        Adds a request to the database
+        :param request: a dict containing the info to put 
+            into the database
+        """
+        sql = """
+        INSERT INTO {}.requests (requester, server, medium, title)
+        VALUES ($1, $2, $3, $4);
+        """.format(self.schema)
+        try:
+             await self.pool.execute(sql,
+                    request['requester_id'],
+                    request['server_id'],
+                    request['medium'].value,
+                    request['title'])
+        except:
+            self.logger.warining(f'Exception occured white adding request: {e}')
+
+    async def add_server(self, server_id):
+        """
+        Adds a request to the database
+        :param server_id: ID of the server to put into the database
+        """
+        sql = """
+        INSERT INTO {}.servers (server)
+        VALUES ($1) ON CONFLICT DO NOTHING;
+        """.format(self.schema)
+        try:
+             await self.pool.execute(sql, server_id)
+        except:
+            self.logger.warining(f'Exception occured while adding server: {e}')
+
+    async def toggle_server_setting(self, server_id, setting):
+        """
+        Toggles one of the server settings
+        :param setting: either 'stats' or 'expanded'
+        """
+        sql = """
+        UPDATE {}.servers
+        SET ($1) = NOT ($1)
+        WHERE server = ($2);
+        """.format(self.schema, setting, setting)
+        try:
+             await self.pool.execute(sql, setting, server_id)
+        except:
+            self.logger.warining(f'Exception occured while adding server: {e}')
