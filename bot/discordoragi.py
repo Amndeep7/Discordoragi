@@ -7,6 +7,7 @@ from time import time
 from asyncio import get_event_loop
 from aiohttp_wrapper import SessionManager
 from helpers.discord_helpers import get_name_with_discriminator
+from helpers import PostgresController
 from logging import Formatter, INFO, StreamHandler, getLogger
 
 
@@ -32,8 +33,15 @@ class Discordoragi(Bot):
         self.footer = config['footer']
         self.logger = self.__get_logger()
         self.session_manager = SessionManager()
-        self.loop = get_event_loop()
         super().__init__('?~')
+    
+    @classmethod
+    async def get_bot(cls):
+        bot_instance = cls()
+        bot_instance.db_controller = await PostgresController.get_instance(
+                bot_instance.logger,
+                bot_instance.database_config)
+        return bot_instance
 
     async def on_ready(self):
         self.logger.log(

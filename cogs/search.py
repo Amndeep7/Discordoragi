@@ -136,13 +136,14 @@ class Search:
         for x in range(0, 59):
             self.footer_title += '\_'
         self.footer = bot.footer
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.mino_setup())
 
-    async def mino_setup(self):
-        self.mino = await Minoshiro.from_postgres(
-            self.bot.mal_config, self.bot.database_config
+    @classmethod
+    async def create_search(cls, bot):
+        search = cls(bot)
+        search.mino = await Minoshiro.from_postgres(
+            search.bot.mal_config, search.bot.database_config
         )
+        return search
 
     async def on_message(self, message):
         if message.author.bot:

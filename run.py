@@ -3,15 +3,22 @@ Actually runs the code
 """
 from bot import Discordoragi
 from cogs import Search
+import asyncio
 
 
-def run():
-    bot = Discordoragi()
+async def run(future):
+    bot = await Discordoragi.get_bot()
+    search_cog = await Search.create_search(bot)
     cogs = [
-      Search(bot)
+      search_cog
     ]
-    bot.start_bot(cogs)
-
+    future.set_result({'bot': bot, 'cogs': cogs})
 
 if __name__ == '__main__':
-    run()
+    loop = asyncio.new_event_loop()
+    future = asyncio.Future()
+    loop.run_until_complete(run(future))
+    bot = future.result()['bot']
+    cogs = future.result()['cogs']
+
+    bot.start_bot(cogs)
