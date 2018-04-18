@@ -58,9 +58,8 @@ target/
 
 # Roboragi-specific stuff
 Config.py
+config.yml
 oauth.ini
-Nocontextbot.py
-run.sh
 /venv/
 
 #Pycharm

@@ -148,7 +148,7 @@ class PostgresController():
         sql = """
         SELECT {} FROM {}.servers
         WHERE server = ($1);""".format(setting, self.schema)
-        return await self.fetchval(sql, server_id)
+        return await self.pool.fetchval(sql, server_id)
 
     async def get_user_stats(self, user_id) -> dict:
         user_stats = {}

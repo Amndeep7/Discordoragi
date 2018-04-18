@@ -37,7 +37,7 @@ def clean_message(message) -> str:
 def get_all_searches(message, expanded_allowed):
     matches = 0
     for match in re.finditer(
-            "\{{2}([^}]*)\}{2}|\<{2}([^>]*)\>{2}|\]{2}([^]]*)\[{2}",
+            r"\{{2}([^}]*)\}{2}|\<{2}([^>]*)\>{2}|\]{2}([^]]*)\[{2}",
             message, re.S):
         matches += 1
         if matches > 1:
@@ -63,7 +63,7 @@ def get_all_searches(message, expanded_allowed):
 
         message = re.sub(re.escape(match.group(0)), "", message)
 
-    for match in re.finditer("\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
+    for match in re.finditer(r"\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
                              message, re.S):
         if '<' in match.group(0):
             cleaned_search = re.sub(r"\<|\>", "", match.group(0))
@@ -168,9 +168,9 @@ class Search:
                 await message.channel.send(embed=embed)
 
     async def __execute_commands(self, message, channel):
-        for match in re.finditer("\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
+        for match in re.finditer(r"\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
                                  message, re.S):
-            command = re.sub('[<>{}[\]]', '', match.group(0))
+            command = re.sub(r'[<>{}[\]]', '', match.group(0))
             if command.startswith('!'):
                 if command.lower() == '!toggle expanded':
                     pass
