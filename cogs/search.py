@@ -87,18 +87,19 @@ def get_all_searches(message, expanded_allowed):
 
 
 def get_response_dict(entry_info, medium):
-    assert (Site.MAL in entry_info.keys() or
-            Site.ANILIST in entry_info.keys()),\
+    assert (Site.ANILIST in entry_info.keys()),\
         "Entry must have either mal or anilist responses"
     resp_dict = {}
     resp_dict['info'] = {}
     url_string = ''
     genre_string = ''
-    resp_dict['title'] = entry_info[Site.MAL]['title'] if entry_info[Site.MAL]\
-        else entry_info[Site.ANILIST]['title']['romaji']
+    if medium == Medium.LN:
+        medium = Medium.MANGA
+    entry_info[Site.MAL] = {'url': None}
+    entry_info[Site.MAL]['url'] = f'https://myanimelist.net/{medium.name.lower()}/{entry_info[Site.ANILIST]["idMal"]}'
+    resp_dict['title'] = entry_info[Site.ANILIST]['title']['romaji']
     resp_dict['info']['medium'] = (medium.name).title()
-    resp_dict['synopsis'] = entry_info[Site.MAL]['synopsis']\
-        if entry_info[Site.MAL] else entry_info[Site.ANILIST]['description']
+    resp_dict['synopsis'] =  entry_info[Site.ANILIST]['description']
     for key in entry_info.keys():
         if entry_info[key]['url']:
             url_string += f'[{Replace(key.value).name}]'\
@@ -108,21 +109,16 @@ def get_response_dict(entry_info, medium):
         for genre in entry_info[Site.ANILIST]['genres']:
             genre_string += f'{genre}, '
         resp_dict['info']['genres'] = genre_string.rstrip(', ')
-    resp_dict['info']['status'] = entry_info[Site.MAL]['status']\
-        if entry_info[Site.MAL] else entry_info[Site.ANILIST]['status']
-    resp_dict['image'] = entry_info[Site.MAL]['image'] if entry_info[Site.MAL]\
-        else entry_info[Site.ANILIST]['coverImage']['medium']
+    resp_dict['info']['status'] = entry_info[Site.ANILIST]['status']
+    resp_dict['image'] = entry_info[Site.ANILIST]['coverImage']['medium']
     if medium == Medium.ANIME:
-        resp_dict['info']['episodes'] = entry_info[Site.MAL]['episodes']\
-            if entry_info[Site.MAL] else entry_info[Site.ANILIST]['episodes']
+        resp_dict['info']['episodes'] = entry_info[Site.ANILIST]['episodes']
         resp_dict['info']['next episode'] = \
             entry_info[Site.ANILIST]['nextAiringEpisode']\
             if entry_info[Site.ANILIST] else None
     else:
-        resp_dict['info']['chapters'] = entry_info[Site.MAL]['chapters']\
-            if entry_info[Site.MAL] else entry_info[Site.ANILIST]['chapters']
-        resp_dict['info']['volumes'] = entry_info[Site.MAL]['volumes']\
-            if entry_info[Site.MAL] else entry_info[Site.ANILIST]['volumes']
+        resp_dict['info']['chapters'] = entry_info[Site.ANILIST]['chapters']
+        resp_dict['info']['volumes'] = entry_info[Site.ANILIST]['volumes']
     return resp_dict
 
 
@@ -147,25 +143,56 @@ class Search:
     async def on_message(self, message):
         if message.author.bot:
             return
-
+        string = r"{]<"
+        if not any(elem in message.clean_content for elem in string):
+            return
         cleaned_message = clean_message(message)
         cleaned_message = await self.__execute_commands(
                 cleaned_message, message.channel)
         entry_info = {}
         for thing in get_all_searches(cleaned_message, True):
-            self.logger.info(f'Searching for {thing["search"]}')
+            async with message.channel.typing():
+                self.logger.info(f'Searching for {thing["search"]}')
+                try:
+                    async for data in self.mino.yield_data(
+                            thing['search'], thing['medium'], sites=[Site.ANILIST]):
+                        entry_info[data[0]] = data[1]
+                except Exception as e:
+                    self.logger.warning(f'Error searching for {thing["search"]}: '
+                                        f'{e}')
+                resp = get_response_dict(entry_info, thing['medium'])
+                embed = self.__build_entry_embed(resp, thing['expanded'])
+                info_message = None
+                if embed is not None:
+                    self.logger.info('Found entry, creating message')
+                    info_message = await message.channel.send(embed=embed)
+                if not info_message:
+                    return
             try:
+                if thing['medium'] == Medium.ANIME:
+                    local_sites = [Site.KITSU, Site.ANIDB]
+                elif thing['medium'] == Medium.VN:
+                    return
+                elif thing['medium'] == Medium.LN:
+                    local_sites = [Site.NOVELUPDATES, Site.LNDB, Site.KITSU]
+                else:
+                    local_sites = [Site.MANGAUPDATES, Site.KITSU]
                 async for data in self.mino.yield_data(
-                        thing['search'], thing['medium']):
+                        thing['search'], thing['medium'], sites=local_sites):
                     entry_info[data[0]] = data[1]
+                temp_embed = info_message.embeds[0]
+                temp_desc = temp_embed.description
+                url_string = ''
+                for key in entry_info.keys():
+                    if entry_info[key]['url']:
+                        url_string += f'[{Replace(key.value).name}]'\
+                                    f'({entry_info[key]["url"]}), '
+                temp_desc += url_string
+                temp_embed.description = temp_desc
+                await info_message.edit(embed=temp_embed)
             except Exception as e:
                 self.logger.warning(f'Error searching for {thing["search"]}: '
                                     f'{e}')
-            resp = get_response_dict(entry_info, thing['medium'])
-            embed = self.__build_entry_embed(resp, thing['expanded'])
-            if embed is not None:
-                self.logger.info('Found entry, creating message')
-                await message.channel.send(embed=embed)
 
     async def __execute_commands(self, message, channel):
         for match in re.finditer(r"\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
