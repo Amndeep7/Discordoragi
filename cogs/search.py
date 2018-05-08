@@ -20,6 +20,19 @@ class Replace(Enum):
     VNDB = 9
 
 
+def cleanup_description(desc) -> str:
+    for match in re.finditer(r"([\[\<\(](.*?)[\]\>\)])", desc, re.S):
+        if 'ource' in match.group(1).lower():
+            desc = desc.replace(match.group(1), '')
+        if 'MAL' in match.group(1):
+            desc = desc.replace(match.group(1), '')
+
+    for match in re.finditer(r"([\<](.*?)[\>])", desc, re.S):
+        if 'br' in match.group(1).lower():
+            desc = desc.replace(match.group(1), ' ')
+    return desc
+
+
 def clean_message(message) -> str:
     """
     Returns a message, but stripped of all code markup and emojis
@@ -96,10 +109,13 @@ def get_response_dict(entry_info, medium):
     if medium == Medium.LN:
         medium = Medium.MANGA
     entry_info[Site.MAL] = {'url': None}
-    entry_info[Site.MAL]['url'] = f'https://myanimelist.net/{medium.name.lower()}/{entry_info[Site.ANILIST]["idMal"]}'
+    entry_info[Site.MAL]['url'] =\
+        f'https://myanimelist.net/{medium.name.lower()}/'\
+        f'{entry_info[Site.ANILIST]["idMal"]}'
     resp_dict['title'] = entry_info[Site.ANILIST]['title']['romaji']
-    resp_dict['info']['medium'] = (medium.name).title()
-    resp_dict['synopsis'] =  entry_info[Site.ANILIST]['description']
+    resp_dict['kana'] = entry_info[Site.ANILIST]['title']['native']
+    resp_dict['synopsis'] = cleanup_description(
+        entry_info[Site.ANILIST]['description'])
     for key in entry_info.keys():
         if entry_info[key]['url']:
             url_string += f'[{Replace(key.value).name}]'\
@@ -109,7 +125,7 @@ def get_response_dict(entry_info, medium):
         for genre in entry_info[Site.ANILIST]['genres']:
             genre_string += f'{genre}, '
         resp_dict['info']['genres'] = genre_string.rstrip(', ')
-    resp_dict['info']['status'] = entry_info[Site.ANILIST]['status']
+    resp_dict['info']['status'] = entry_info[Site.ANILIST]['status'].title()
     resp_dict['image'] = entry_info[Site.ANILIST]['coverImage']['medium']
     if medium == Medium.ANIME:
         resp_dict['info']['episodes'] = entry_info[Site.ANILIST]['episodes']
@@ -146,21 +162,26 @@ class Search:
         string = r"{]<"
         if not any(elem in message.clean_content for elem in string):
             return
-        cleaned_message = clean_message(message)
         cleaned_message = await self.__execute_commands(
-                cleaned_message, message.channel)
+                message)
         entry_info = {}
         for thing in get_all_searches(cleaned_message, True):
             async with message.channel.typing():
                 self.logger.info(f'Searching for {thing["search"]}')
                 try:
                     async for data in self.mino.yield_data(
-                            thing['search'], thing['medium'], sites=[Site.ANILIST]):
+                            thing['search'],
+                            thing['medium'],
+                            sites=[Site.ANILIST]):
+                        print(data)
                         entry_info[data[0]] = data[1]
                 except Exception as e:
-                    self.logger.warning(f'Error searching for {thing["search"]}: '
-                                        f'{e}')
-                resp = get_response_dict(entry_info, thing['medium'])
+                    self.logger.warning(
+                        f'Error searching for {thing["search"]}: {e}')
+                try:
+                    resp = get_response_dict(entry_info, thing['medium'])
+                except AssertionError:
+                    continue
                 embed = self.__build_entry_embed(resp, thing['expanded'])
                 info_message = None
                 if embed is not None:
@@ -168,43 +189,128 @@ class Search:
                     info_message = await message.channel.send(embed=embed)
                 if not info_message:
                     return
-            try:
-                if thing['medium'] == Medium.ANIME:
-                    local_sites = [Site.KITSU, Site.ANIDB]
-                elif thing['medium'] == Medium.VN:
-                    return
-                elif thing['medium'] == Medium.LN:
-                    local_sites = [Site.NOVELUPDATES, Site.LNDB, Site.KITSU]
-                else:
-                    local_sites = [Site.MANGAUPDATES, Site.KITSU]
-                async for data in self.mino.yield_data(
-                        thing['search'], thing['medium'], sites=local_sites):
-                    entry_info[data[0]] = data[1]
-                temp_embed = info_message.embeds[0]
-                temp_desc = temp_embed.description
-                url_string = ''
-                for key in entry_info.keys():
-                    if entry_info[key]['url']:
-                        url_string += f'[{Replace(key.value).name}]'\
-                                    f'({entry_info[key]["url"]}), '
-                temp_desc += url_string
-                temp_embed.description = temp_desc
-                await info_message.edit(embed=temp_embed)
-            except Exception as e:
-                self.logger.warning(f'Error searching for {thing["search"]}: '
-                                    f'{e}')
+                try:
+                    if thing['medium'] == Medium.ANIME:
+                        local_sites = [Site.KITSU, Site.ANIDB]
+                    elif thing['medium'] == Medium.VN:
+                        return
+                    elif thing['medium'] == Medium.LN:
+                        local_sites = \
+                            [Site.NOVELUPDATES, Site.LNDB, Site.KITSU]
+                    else:
+                        local_sites = [Site.MANGAUPDATES, Site.KITSU]
+                    async for data in self.mino.yield_data(
+                            resp['title'], thing['medium'], sites=local_sites):
+                        entry_info[data[0]] = data[1]
+                    temp_embed = info_message.embeds[0]
+                    temp_desc = temp_embed.description
+                    url_string = ''
+                    for key in entry_info.keys():
+                        if entry_info[key]['url']:
+                            url_string += f'[{Replace(key.value).name}]'\
+                                        f'({entry_info[key]["url"]}), '
+                    temp_desc = url_string.strip(', ')
+                    temp_embed.description = temp_desc
+                    await info_message.edit(embed=temp_embed)
+                except Exception as e:
+                    self.logger.warning(
+                        f'Error searching for {thing["search"]}: '
+                        f'{e}')
+                await self.bot.db_controller.add_request({
+                    'requester_id': message.author.id,
+                    'message_id': info_message.id,
+                    'server_id': message.channel.guild.id,
+                    'medium': thing['medium'],
+                    'title': resp['title']
+                })
 
-    async def __execute_commands(self, message, channel):
+    async def __execute_commands(self, message):
+        cleaned_message = clean_message(message)
         for match in re.finditer(r"\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
-                                 message, re.S):
+                                 cleaned_message, re.S):
             command = re.sub(r'[<>{}[\]]', '', match.group(0))
             if command.startswith('!'):
                 if command.lower() == '!toggle expanded':
                     pass
                 if command.lower() == '!help':
-                    await channel.send(embed=self.__print_help_embed())
-                message = re.sub(re.escape(match.group(0)), "", message)
-        return message
+                    await message.channel.send(embed=self.__print_help_embed())
+                if command.lower() == '!sstats':
+                    await message.channel.send(
+                        embed=await self.__print_server_stats(
+                            message.channel.guild))
+                if command.lower().startswith('!stats'):
+                    if message.mentions:
+                        await message.channel.send(
+                            embed=await self.__print_user_stats(
+                                message.mentions[0]))
+                    else:
+                        pass
+                cleaned_message = re.sub(
+                    re.escape(match.group(0)), "", cleaned_message)
+        return cleaned_message
+
+    async def __print_user_stats(self, user):
+        try:
+            user_stats = await self.bot.db_controller.get_user_stats(user.id)
+            percentage = \
+                user_stats['user_requests']/user_stats['global_requests']
+            stats_str = f'__*Some usage stats for {user.mention}*__:\n'
+            stats_str += f'\n**{user_stats["user_requests"]}** requests made '\
+                         f'({percentage * 100}% of all requests and '\
+                         f'#{user_stats["rank"]} overall)\n'
+            stats_str += f'**{user_stats["unique_requests"]}** '\
+                         f'unique anime/manga/ln/vn requests made\n\n'
+            stats_str += \
+                f'**{user.name}\'s most frequently requested items:**\n\n'
+            count = 1
+            for item in user_stats['top_requests']:
+                stats_str += f'{count}. **{item["title"]}**'\
+                             f' ({Medium(item["medium"]).name.title()} - '\
+                             f'{item["count"]} requests)\n'
+                count += 1
+            embed = Embed(
+                title=f"{user.name}'s Stats",
+                description=stats_str
+            )
+            embed.add_field(
+                name=self.footer_title,
+                value=self.footer
+            )
+            return embed
+        except Exception as e:
+            self.logger.warning(f'Error getting user stats: {e}')
+
+    async def __print_server_stats(self, server):
+        try:
+            server_stats = await \
+                self.bot.db_controller.get_server_stats(server.id)
+            percentage = \
+                server_stats['server_requests']/server_stats['global_requests']
+            stats_str = f'__*Some usage stats for {server.name}*__:\n'
+            stats_str += f'\n**{server_stats["server_requests"]}** requests '\
+                         f'made ({percentage * 100}% of all requests and '\
+                         f'#{server_stats["rank"]} overall)\n'
+            stats_str += f'**{server_stats["unique_requests"]}** '\
+                         f'unique anime/manga/ln/vn requests made\n\n'
+            stats_str += \
+                f'**{server.name}\'s most frequently requested items:**\n\n'
+            count = 1
+            for item in server_stats['top_requests']:
+                stats_str += f'{count}. **{item["title"]}**'\
+                             f' ({Medium(item["medium"]).name.title()} - '\
+                             f'{item["count"]} requests)\n'
+                count += 1
+            embed = Embed(
+                title=f"{server.name}'s Stats",
+                description=stats_str
+            )
+            embed.add_field(
+                name=self.footer_title,
+                value=self.footer
+            )
+            return embed
+        except Exception as e:
+            self.logger.warning(f'Error getting server stats: {e}')
 
     def __print_help_embed(self):
         try:
@@ -223,12 +329,6 @@ class Search:
                 title=embed_title,
                 description=help_info
             )
-            """
-            embed.add_field(
-                name=' ',
-                value=help_info
-            )
-            """
             embed.add_field(
                 name=self.footer_title,
                 value=self.footer
@@ -238,9 +338,11 @@ class Search:
             self.logger.warning(f'Exception occured when printing help: {e}')
 
     def __build_entry_embed(self, entry_info, is_expanded):
-        info_text = '('
+        info_text = f'{entry_info["kana"]}\n\n('
         for key, data in entry_info['info'].items():
-            info_text += f'{key.title()}: {data} | '
+            if not data:
+                continue
+            info_text += f'**{key.title()}**: {data} | '
         info_text = info_text.rstrip(' | ') + ')'
 
         try:

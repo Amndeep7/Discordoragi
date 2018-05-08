@@ -21,6 +21,7 @@ async def make_tables(pool: Pool, schema: str):
         requests = """
         CREATE TABLE IF NOT EXISTS {}.requests (
         id SERIAL,
+        message BIGINT,
         requester BIGINT,
         server BIGINT,
         medium SMALLINT,
@@ -92,17 +93,18 @@ class PostgresController():
             into the database
         """
         sql = """
-        INSERT INTO {}.requests (requester, server, medium, title)
-        VALUES ($1, $2, $3, $4);
+        INSERT INTO {}.requests (requester, message, server, medium, title)
+        VALUES ($1, $2, $3, $4, $5);
         """.format(self.schema)
         try:
             await self.pool.execute(sql,
                                     request['requester_id'],
+                                    request['message_id'],
                                     request['server_id'],
                                     request['medium'].value,
                                     request['title'])
         except Exception as e:
-            self.logger.warining(
+            self.logger.warning(
                 f'Exception occured white adding request: {e}')
 
     async def add_server(self, server_id):
@@ -117,7 +119,7 @@ class PostgresController():
         try:
             await self.pool.execute(sql, server_id)
         except Exception as e:
-            self.logger.warining(f'Exception occured while adding server: {e}')
+            self.logger.warning(f'Exception occured while adding server: {e}')
 
     async def toggle_server_setting(self, server_id, setting):
         """
@@ -132,16 +134,17 @@ class PostgresController():
         try:
             await self.pool.execute(sql, setting, server_id)
         except Exception as e:
-            self.logger.warining(f'Exception occured while adding server: {e}')
+            self.logger.warning(f'Exception occured while adding server: {e}')
 
-    async def __total_requests(self):
+    async def __global_requests(self):
         sql = """
         SELECT count(*) from {}.requests;
         """.format(self.schema)
         try:
-            return await int(self.pool.fetchone(sql)[0])
+            count = await self.pool.fetchval(sql)
+            return int(count)
         except Exception as e:
-            self.logger.warining(
+            self.logger.warning(
                 f'Exception occured while getting total requests: {e}')
 
     async def get_server_setting(self, server_id, setting) -> bool:
@@ -152,27 +155,120 @@ class PostgresController():
 
     async def get_user_stats(self, user_id) -> dict:
         user_stats = {}
-        user_stats['total_requests'] = await self.__total_requests()
+        user_stats['global_requests'] = await self.__global_requests()
 
         user_request_sql = """
         SELECT COUNT(*) FROM {}.requests
         WHERE requester = ($1);
         """.format(self.schema)
         try:
-            await self.pool.execute(user_request_sql, user_id)
-            user_stats['user_requests'] = int(self.pool.fetchone()[0])
+            count = await self.pool.fetchval(user_request_sql, user_id)
+            user_stats['user_requests'] = count
         except Exception as e:
-            self.logger.warining(
+            self.logger.warning(
                 f'Exception occured while getting user requests: {e}')
 
         top_requests_sql = """
-        SELECT name, type, COUNT(name) FROM {}.requests
+        SELECT title, medium, COUNT(title) FROM {}.requests
         WHERE requester = ($1)
-        GROUP BY name, type ORDER BY COUNT(name) DESC, name ASC LIMIT 5
+        GROUP BY title, medium ORDER BY COUNT(title) DESC, title ASC LIMIT 5
         """.format(self.schema)
-        top_requests = await self.pool.fetchall(top_requests_sql, user_id)
-        user_stats['top_requests'] = []
-        for request in top_requests:
-            user_stats['top_requests'].append(request)
+        try:
+            top_requests = await self.pool.fetch(top_requests_sql, user_id)
+            user_stats['top_requests'] = []
+            for request in top_requests:
+                user_stats['top_requests'].append(request)
+        except Exception as e:
+            self.logger.warning(
+                f'Exception occured while getting user requests: {e}')
+
+        request_rank = """
+        SELECT row FROM
+        (SELECT requester, count(1), ROW_NUMBER() over (ORDER BY COUNT(1) DESC)
+            as row
+        FROM {}.requests GROUP BY requester) as overallrequestrank
+        WHERE requester = ($1)
+        """.format(self.schema)
+
+        try:
+            user_stats['rank'] = int(
+                await self.pool.fetchval(request_rank, user_id))
+        except Exception as e:
+            self.logger.warning(
+                f'Exception occured while getting user request rank: {e}'
+            )
+
+        unique_requests = """
+        SELECT COUNT(DISTINCT (title, medium))
+        FROM {}.requests
+        WHERE requester = ($1)
+        """.format(self.schema)
+        try:
+            user_stats['unique_requests'] = int(
+                await self.pool.fetchval(unique_requests, user_id))
+        except Exception as e:
+            self.logger.warning(
+                f'Exception occured while getting user request rank: {e}'
+            )
 
         return user_stats
+
+    async def get_server_stats(self, server_id) -> dict:
+        server_stats = {}
+        server_stats['global_requests'] = await self.__global_requests()
+
+        server_request_sql = """
+        SELECT COUNT(*) FROM {}.requests
+        WHERE server = ($1);
+        """.format(self.schema)
+        try:
+            count = await self.pool.fetchval(server_request_sql, server_id)
+            server_stats['server_requests'] = count
+        except Exception as e:
+            self.logger.warning(
+                f'Exception occured while getting server requests: {e}')
+
+        top_requests_sql = """
+        SELECT title, medium, COUNT(title) FROM {}.requests
+        WHERE server = ($1)
+        GROUP BY title, medium ORDER BY COUNT(title) DESC, title ASC LIMIT 5
+        """.format(self.schema)
+        try:
+            top_requests = await self.pool.fetch(top_requests_sql, server_id)
+            server_stats['top_requests'] = []
+            for request in top_requests:
+                server_stats['top_requests'].append(request)
+        except Exception as e:
+            self.logger.warning(
+                f'Exception occured while getting server requests: {e}')
+
+        request_rank = """
+        SELECT row FROM
+        (SELECT server, count(1), ROW_NUMBER() over (ORDER BY COUNT(1) DESC)
+            as row
+        FROM {}.requests GROUP BY server) as overallrequestrank
+        WHERE server = ($1)
+        """.format(self.schema)
+
+        try:
+            server_stats['rank'] = int(
+                await self.pool.fetchval(request_rank, server_id))
+        except Exception as e:
+            self.logger.warning(
+                f'Exception occured while getting server request rank: {e}'
+            )
+
+        unique_requests = """
+        SELECT COUNT(DISTINCT (title, medium))
+        FROM {}.requests
+        WHERE server = ($1)
+        """.format(self.schema)
+        try:
+            server_stats['unique_requests'] = int(
+                await self.pool.fetchval(unique_requests, server_id))
+        except Exception as e:
+            self.logger.warning(
+                f'Exception occured while getting server request rank: {e}'
+            )
+
+        return server_stats
