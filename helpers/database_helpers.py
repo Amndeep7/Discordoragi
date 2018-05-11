@@ -8,27 +8,26 @@ async def make_tables(pool: Pool, schema: str):
         :param pool: the connection pool.
         :param schema: the schema name.
         """
-        await pool.execute('CREATE SCHEMA IF NOT EXISTS {};'.format(schema))
 
         servers = """
-        CREATE TABLE IF NOT EXISTS {}.servers (
+        CREATE TABLE IF NOT EXISTS servers (
         server INT,
         expanded BOOLEAN,
         stats BOOLEAN,
         PRIMARY KEY (server)
-        );""".format(schema)
+        );"""
 
         requests = """
-        CREATE TABLE IF NOT EXISTS {}.requests (
+        CREATE TABLE IF NOT EXISTS requests (
         id SERIAL,
-        message BIGINT,
         requester BIGINT,
         server BIGINT,
         medium SMALLINT,
         title VARCHAR NOT NULL,
+        logtime timestamp DEFAULT current_timestamp,
         PRIMARY KEY (id, requester, server)
         );
-        """.format(schema)
+        """
 
         await pool.execute(servers)
         await pool.execute(requests)
@@ -93,13 +92,12 @@ class PostgresController():
             into the database
         """
         sql = """
-        INSERT INTO {}.requests (requester, message, server, medium, title)
-        VALUES ($1, $2, $3, $4, $5);
-        """.format(self.schema)
+        INSERT INTO requests (requester, server, medium, title)
+        VALUES ($1, $2, $3, $4);
+        """
         try:
             await self.pool.execute(sql,
                                     request['requester_id'],
-                                    request['message_id'],
                                     request['server_id'],
                                     request['medium'].value,
                                     request['title'])
@@ -113,9 +111,9 @@ class PostgresController():
         :param server_id: ID of the server to put into the database
         """
         sql = """
-        INSERT INTO {}.servers (server)
+        INSERT INTO servers (server)
         VALUES ($1) ON CONFLICT DO NOTHING;
-        """.format(self.schema)
+        """
         try:
             await self.pool.execute(sql, server_id)
         except Exception as e:
@@ -127,10 +125,10 @@ class PostgresController():
         :param setting: either 'stats' or 'expanded'
         """
         sql = """
-        UPDATE {}.servers
+        UPDATE servers
         SET ($1) = NOT ($1)
         WHERE server = ($2);
-        """.format(self.schema)
+        """
         try:
             await self.pool.execute(sql, setting, server_id)
         except Exception as e:
@@ -138,8 +136,8 @@ class PostgresController():
 
     async def __global_requests(self):
         sql = """
-        SELECT count(*) from {}.requests;
-        """.format(self.schema)
+        SELECT count(*) from requests;
+        """
         try:
             count = await self.pool.fetchval(sql)
             return int(count)
@@ -149,7 +147,7 @@ class PostgresController():
 
     async def get_server_setting(self, server_id, setting) -> bool:
         sql = """
-        SELECT {} FROM {}.servers
+        SELECT {} FROM servers
         WHERE server = ($1);""".format(setting, self.schema)
         return await self.pool.fetchval(sql, server_id)
 
@@ -158,9 +156,9 @@ class PostgresController():
         user_stats['global_requests'] = await self.__global_requests()
 
         user_request_sql = """
-        SELECT COUNT(*) FROM {}.requests
+        SELECT COUNT(*) FROM requests
         WHERE requester = ($1);
-        """.format(self.schema)
+        """
         try:
             count = await self.pool.fetchval(user_request_sql, user_id)
             user_stats['user_requests'] = count
@@ -169,10 +167,10 @@ class PostgresController():
                 f'Exception occured while getting user requests: {e}')
 
         top_requests_sql = """
-        SELECT title, medium, COUNT(title) FROM {}.requests
+        SELECT title, medium, COUNT(title) FROM requests
         WHERE requester = ($1)
         GROUP BY title, medium ORDER BY COUNT(title) DESC, title ASC LIMIT 5
-        """.format(self.schema)
+        """
         try:
             top_requests = await self.pool.fetch(top_requests_sql, user_id)
             user_stats['top_requests'] = []
@@ -186,9 +184,9 @@ class PostgresController():
         SELECT row FROM
         (SELECT requester, count(1), ROW_NUMBER() over (ORDER BY COUNT(1) DESC)
             as row
-        FROM {}.requests GROUP BY requester) as overallrequestrank
+        FROM requests GROUP BY requester) as overallrequestrank
         WHERE requester = ($1)
-        """.format(self.schema)
+        """
 
         try:
             user_stats['rank'] = int(
@@ -200,9 +198,9 @@ class PostgresController():
 
         unique_requests = """
         SELECT COUNT(DISTINCT (title, medium))
-        FROM {}.requests
+        FROM requests
         WHERE requester = ($1)
-        """.format(self.schema)
+        """
         try:
             user_stats['unique_requests'] = int(
                 await self.pool.fetchval(unique_requests, user_id))
@@ -218,9 +216,9 @@ class PostgresController():
         server_stats['global_requests'] = await self.__global_requests()
 
         server_request_sql = """
-        SELECT COUNT(*) FROM {}.requests
+        SELECT COUNT(*) FROM requests
         WHERE server = ($1);
-        """.format(self.schema)
+        """
         try:
             count = await self.pool.fetchval(server_request_sql, server_id)
             server_stats['server_requests'] = count
@@ -229,10 +227,10 @@ class PostgresController():
                 f'Exception occured while getting server requests: {e}')
 
         top_requests_sql = """
-        SELECT title, medium, COUNT(title) FROM {}.requests
+        SELECT title, medium, COUNT(title) FROM requests
         WHERE server = ($1)
         GROUP BY title, medium ORDER BY COUNT(title) DESC, title ASC LIMIT 5
-        """.format(self.schema)
+        """
         try:
             top_requests = await self.pool.fetch(top_requests_sql, server_id)
             server_stats['top_requests'] = []
@@ -246,9 +244,9 @@ class PostgresController():
         SELECT row FROM
         (SELECT server, count(1), ROW_NUMBER() over (ORDER BY COUNT(1) DESC)
             as row
-        FROM {}.requests GROUP BY server) as overallrequestrank
+        FROM requests GROUP BY server) as overallrequestrank
         WHERE server = ($1)
-        """.format(self.schema)
+        """
 
         try:
             server_stats['rank'] = int(
@@ -260,9 +258,9 @@ class PostgresController():
 
         unique_requests = """
         SELECT COUNT(DISTINCT (title, medium))
-        FROM {}.requests
+        FROM requests
         WHERE server = ($1)
-        """.format(self.schema)
+        """
         try:
             server_stats['unique_requests'] = int(
                 await self.pool.fetchval(unique_requests, server_id))
