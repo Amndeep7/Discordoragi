@@ -5,6 +5,7 @@ in brackets.
 from enum import Enum
 from discord import Embed
 from minoshiro import Medium, Minoshiro, Site
+import datetime
 import re
 
 
@@ -130,7 +131,8 @@ def get_response_dict(entry_info, medium):
     if medium == Medium.ANIME:
         resp_dict['info']['episodes'] = entry_info[Site.ANILIST]['episodes']
         resp_dict['info']['next episode'] = \
-            entry_info[Site.ANILIST]['nextAiringEpisode']\
+            datetime.datetime.now() + datetime.timedelta.seconds(
+                entry_info[Site.ANILIST]['nextAiringEpisode']['timeUntilAiring'])\
             if entry_info[Site.ANILIST] else None
     else:
         resp_dict['info']['chapters'] = entry_info[Site.ANILIST]['chapters']
