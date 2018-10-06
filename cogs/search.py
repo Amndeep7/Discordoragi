@@ -45,7 +45,8 @@ def clean_message(message) -> str:
         r"^`{3}([\S]+)?\n([\s\S]+)\n`{3}", "", message.clean_content)
     no_single_codeblocks = re.sub(r"\`(.*\s?)\`", "", no_multi_codeblocks)
     no_emojis = re.sub(r'<:.+?:([0-9]{15,21})>', "", no_single_codeblocks)
-    return no_emojis
+    no_anim_emojis = re.sub(r'<a:.+?:([0-9]{15,21})>', "", no_emojis)
+    return no_anim_emojis
 
 
 def get_all_searches(message, expanded_allowed):
