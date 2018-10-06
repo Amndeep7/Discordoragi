@@ -130,13 +130,14 @@ def get_response_dict(entry_info, medium):
     resp_dict['image'] = entry_info[Site.ANILIST]['coverImage']['medium']
     if medium == Medium.ANIME:
         resp_dict['info']['episodes'] = entry_info[Site.ANILIST]['episodes']
-        temp_date = datetime.datetime.now() + datetime.timedelta.seconds(
-            entry_info[Site.ANILIST]['nextAiringEpisode']['timeUntilAiring'])\
-            if entry_info[Site.ANILIST] else None
-        time_diff = datetime.timedelta(
-            temp_date - datetime.datetime.now())
-        resp_dict['info']['next episode'] = \
-            f'{time_diff.days} days {time_diff.hours}'
+        temp_date = datetime.datetime.now() + datetime.timedelta(
+            seconds=entry_info[Site.ANILIST]['nextAiringEpisode']['timeUntilAiring']) \
+            if entry_info[Site.ANILIST] and \
+            not entry_info[Site.ANILIST]['status'] == 'FINISHED' else None
+        if temp_date:
+            time_diff = temp_date - datetime.datetime.now()
+            resp_dict['info']['next episode'] = \
+                f'{time_diff.days} days {time_diff.seconds//3600} hours'
     else:
         resp_dict['info']['chapters'] = entry_info[Site.ANILIST]['chapters']
         resp_dict['info']['volumes'] = entry_info[Site.ANILIST]['volumes']
@@ -157,7 +158,7 @@ class Search:
     async def create_search(cls, bot):
         search = cls(bot)
         search.mino = await Minoshiro.from_postgres(
-            search.bot.mal_config, search.bot.database_config
+            search.bot.database_config
         )
         return search
 
