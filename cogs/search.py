@@ -179,7 +179,6 @@ class Search:
                             thing['search'],
                             thing['medium'],
                             sites=[Site.ANILIST]):
-                        print(data)
                         entry_info[data[0]] = data[1]
                 except Exception as e:
                     self.logger.warning(
@@ -187,13 +186,17 @@ class Search:
                 try:
                     resp = get_response_dict(entry_info, thing['medium'])
                 except AssertionError:
+                    await message.add_reaction('\N{Cross Mark}')
                     continue
                 embed = self.__build_entry_embed(resp, thing['expanded'])
                 info_message = None
                 if embed is not None:
                     self.logger.info('Found entry, creating message')
                     info_message = await message.channel.send(embed=embed)
+                else:
+                    await message.add_reaction('\N{Cross Mark}')
                 if not info_message:
+                    await message.add_reaction('\N{Cross Mark}')
                     return
                 try:
                     if thing['medium'] == Medium.ANIME:
@@ -222,7 +225,8 @@ class Search:
                     self.logger.warning(
                         f'Error searching for {thing["search"]}: '
                         f'{e}')
-                await self.bot.db_controller.add_request({
+                    await message.add_reaction('\N{Cross Mark}')
+                return await self.bot.db_controller.add_request({
                     'requester_id': message.author.id,
                     'message_id': info_message.id,
                     'server_id': message.channel.guild.id,
@@ -250,7 +254,15 @@ class Search:
                             embed=await self.__print_user_stats(
                                 message.mentions[0]))
                     else:
-                        pass
+                        await message.channel.send(
+                            embed=Embed(
+                                title=f'Command Error :x:',
+                                description=f'General stats are disabled for '
+                                            f'now, mention someone to see '
+                                            f'individual stats'
+                            ),
+                            delete_after=3
+                        )
                 cleaned_message = re.sub(
                     re.escape(match.group(0)), "", cleaned_message)
         return cleaned_message

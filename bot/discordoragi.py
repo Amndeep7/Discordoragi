@@ -27,7 +27,6 @@ class Discordoragi(Bot):
         with open("config/config.yml", 'r') as yml_config:
             config = yaml.load(yml_config)
         self.database_config = config['database_info']
-        self.mal_config = config['mal_info']
         self.credentials = config['bot_credentials']
         self.footer = config['footer']
         self.logger = self.__get_logger()
