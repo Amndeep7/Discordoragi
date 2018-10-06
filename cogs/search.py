@@ -130,10 +130,13 @@ def get_response_dict(entry_info, medium):
     resp_dict['image'] = entry_info[Site.ANILIST]['coverImage']['medium']
     if medium == Medium.ANIME:
         resp_dict['info']['episodes'] = entry_info[Site.ANILIST]['episodes']
-        resp_dict['info']['next episode'] = \
-            datetime.datetime.now() + datetime.timedelta.seconds(
-                entry_info[Site.ANILIST]['nextAiringEpisode']['timeUntilAiring'])\
+        temp_date = datetime.datetime.now() + datetime.timedelta.seconds(
+            entry_info[Site.ANILIST]['nextAiringEpisode']['timeUntilAiring'])\
             if entry_info[Site.ANILIST] else None
+        time_diff = datetime.timedelta(
+            temp_date - datetime.datetime.now())
+        resp_dict['info']['next episode'] = \
+            f'{time_diff.days} days {time_diff.hours}'
     else:
         resp_dict['info']['chapters'] = entry_info[Site.ANILIST]['chapters']
         resp_dict['info']['volumes'] = entry_info[Site.ANILIST]['volumes']
