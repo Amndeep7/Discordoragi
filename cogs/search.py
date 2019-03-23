@@ -4,6 +4,7 @@ in brackets.
 """
 from enum import Enum
 from discord import Embed
+from discord.ext import commands
 from minoshiro import Medium, Minoshiro, Site
 import datetime
 import re
@@ -146,7 +147,7 @@ def get_response_dict(entry_info, medium):
     return resp_dict
 
 
-class Search:
+class Search(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
