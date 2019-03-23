@@ -170,6 +170,7 @@ class Search(commands.Cog):
         )
         return search
 
+    @commands.Cog.listener()
     async def on_message(self, message):
         if message.author.bot:
             return
