@@ -42,7 +42,7 @@ def clean_message(message) -> str:
     :returns: message string - code markup and emojis
     """
     no_multi_codeblocks = re.sub(
-        r"^`{3}([\S]+)?\n([\s\S]+)\n`{3}", "", message.clean_content)
+        r"`{3}([\S]+)?\n([\s\S]+)\n`{3}", "", message.clean_content)
     no_single_codeblocks = re.sub(r"\`(.*\s?)\`", "", no_multi_codeblocks)
     no_emojis = re.sub(r'<:.+?:([0-9]{15,21})>', "", no_single_codeblocks)
     no_anim_emojis = re.sub(r'<a:.+?:([0-9]{15,21})>', "", no_emojis)
@@ -132,7 +132,8 @@ def get_response_dict(entry_info, medium):
     if medium == Medium.ANIME:
         resp_dict['info']['episodes'] = entry_info[Site.ANILIST]['episodes']
         temp_date = datetime.datetime.now() + datetime.timedelta(
-            seconds=entry_info[Site.ANILIST]['nextAiringEpisode']['timeUntilAiring']) \
+            seconds=
+            entry_info[Site.ANILIST]['nextAiringEpisode']['timeUntilAiring']) \
             if entry_info[Site.ANILIST] and \
             not entry_info[Site.ANILIST]['status'] == 'FINISHED' else None
         if temp_date:
@@ -158,8 +159,13 @@ class Search:
     @classmethod
     async def create_search(cls, bot):
         search = cls(bot)
+        print(search.bot.database_config)
         search.mino = await Minoshiro.from_postgres(
-            search.bot.database_config
+            # Temp fix because MAL bad
+            {
+                'user': 'a',
+                'password': 'b'
+            }, search.bot.database_config
         )
         return search
 
