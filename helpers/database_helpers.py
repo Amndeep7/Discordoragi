@@ -11,7 +11,7 @@ async def make_tables(pool: Pool, schema: str):
 
         servers = """
         CREATE TABLE IF NOT EXISTS servers (
-        server INT,
+        server BIGINT,
         expanded BOOLEAN,
         stats BOOLEAN,
         PRIMARY KEY (server)
