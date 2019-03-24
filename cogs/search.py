@@ -162,11 +162,7 @@ class Search(commands.Cog):
         search = cls(bot)
         print(search.bot.database_config)
         search.mino = await Minoshiro.from_postgres(
-            # Temp fix because MAL bad
-            {
-                'user': 'a',
-                'password': 'b'
-            }, search.bot.database_config
+            search.bot.database_config
         )
         return search
 
