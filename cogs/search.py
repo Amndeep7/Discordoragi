@@ -60,6 +60,9 @@ def get_all_searches(message, expanded_allowed):
             expanded_allowed = False
         if '<<' in match.group(0):
             cleaned_search = re.sub(r"\<{2}|\>{2}", "", match.group(0))
+            url_cleaned = re.sub(r'(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)', '', cleaned_search)
+            if not url_cleaned:
+                return False
             yield {
                 'medium':  Medium.MANGA,
                 'search': cleaned_search,
@@ -83,6 +86,9 @@ def get_all_searches(message, expanded_allowed):
                              message, re.S):
         if '<' in match.group(0):
             cleaned_search = re.sub(r"\<|\>", "", match.group(0))
+            url_cleaned = re.sub(r'(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)', '', cleaned_search)
+            if not url_cleaned:
+                return False
             yield {
                 'medium': Medium.MANGA,
                 'search': cleaned_search,
