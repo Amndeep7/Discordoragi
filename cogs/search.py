@@ -237,7 +237,7 @@ class Search(commands.Cog):
                         f'Error searching for {thing["search"]}: '
                         f'{e}')
                     await message.add_reaction('\N{Cross Mark}')
-                return await self.bot.db_controller.add_request({
+                await self.bot.db_controller.add_request({
                     'requester_id': message.author.id,
                     'message_id': info_message.id,
                     'server_id': message.channel.guild.id,
