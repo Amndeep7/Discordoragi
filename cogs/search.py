@@ -51,13 +51,12 @@ def clean_message(message) -> str:
 
 
 def get_all_searches(message, expanded_allowed):
-    matches = 0
-    for match in re.finditer(
+    all_matches = list(re.finditer(
             r"\{{2}([^}]*)\}{2}|\<{2}([^>]*)\>{2}|\]{2}([^]]*)\[{2}",
-            message, re.S):
-        matches += 1
-        if matches > 1:
-            expanded_allowed = False
+            message, re.S))
+    if len(all_matches) > 1:
+        expanded_allowed = false
+    for match in all_matches:
         if '<<' in match.group(0):
             cleaned_search = re.sub(r"\<{2}|\>{2}", "", match.group(0))
             url_cleaned = re.sub(r'(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)', '', cleaned_search)
@@ -82,8 +81,9 @@ def get_all_searches(message, expanded_allowed):
 
         message = re.sub(re.escape(match.group(0)), "", message)
 
-    for match in re.finditer(r"\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
-                             message, re.S):
+    all_matches = list(re.finditer(r"\{([^{}]*)\}|\<([^<>]*)\>|\]([^[\]]*)\[",
+                             message, re.S))
+    for match in all_matches:
         if '<' in match.group(0):
             cleaned_search = re.sub(r"\<|\>", "", match.group(0))
             url_cleaned = re.sub(r'(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)', '', cleaned_search)
