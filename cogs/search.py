@@ -55,7 +55,7 @@ def get_all_searches(message, expanded_allowed):
             r"\{{2}([^}]*)\}{2}|\<{2}([^>]*)\>{2}|\]{2}([^]]*)\[{2}",
             message, re.S))
     if len(all_matches) > 1:
-        expanded_allowed = false
+        expanded_allowed = False
     for match in all_matches:
         if '<<' in match.group(0):
             cleaned_search = re.sub(r"\<{2}|\>{2}", "", match.group(0))
