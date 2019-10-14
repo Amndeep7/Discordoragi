@@ -176,6 +176,9 @@ class Search(commands.Cog):
     async def on_message(self, message):
         if message.author.bot:
             return
+        discord_user_id_regex = "<@.?[0-9]*?>"
+        if re.search(discord_user_id_regex, message.content):
+            return
         string = r"{]<"
         if not any(elem in message.clean_content for elem in string):
             return
