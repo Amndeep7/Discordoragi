@@ -306,7 +306,8 @@ class Search(commands.Cog):
             )
             embed.add_field(
                 name=self.footer_title,
-                value=self.footer
+                value=self.footer,
+                inline=False
             )
             return embed
         except Exception as e:
@@ -338,7 +339,8 @@ class Search(commands.Cog):
             )
             embed.add_field(
                 name=self.footer_title,
-                value=self.footer
+                value=self.footer,
+                inline=False
             )
             return embed
         except Exception as e:
@@ -363,7 +365,8 @@ class Search(commands.Cog):
             )
             embed.add_field(
                 name=self.footer_title,
-                value=self.footer
+                value=self.footer,
+                inline=False
             )
             return embed
         except Exception as e:
@@ -386,7 +389,8 @@ class Search(commands.Cog):
             embed.set_thumbnail(url=entry_info['image'])
             embed.add_field(
                 name='__Info__',
-                value=info_text
+                value=info_text,
+                inline=False
             )
             if is_expanded:
                 if len(entry_info['synopsis'].rstrip()) > 1023:
@@ -395,11 +399,13 @@ class Search(commands.Cog):
                     desc_text = entry_info['synopsis'].rstrip()
                 embed.add_field(
                     name='__Description__',
-                    value=desc_text
+                    value=desc_text,
+                    inline=False
                 )
             embed.add_field(
                 name=self.footer_title,
-                value=self.footer
+                value=self.footer,
+                inline=False
             )
             return embed
         except Exception as e:
