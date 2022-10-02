@@ -1,0 +1,17 @@
+# git
+.git/
+.gitignore
+
+# vim
+**/*.swp
+
+# database
+pgdata/
+
+# envvars
+.env
+.env.example
+
+# docker
+.dockerignore
+docker-compose.yml
