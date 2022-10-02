@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "Discordoragi"
+version = "4.0.0a"
+description = "Discordoragi is a Discord bot usign the Minoshiro library which creates anime and manga links from MAL, Anilist, MangaUpdates, and Anime-Planet when requested."
+license = "GPL-2.0-or-later"
+authors = [
+  "Alex Portlock 'Nihilate' <>",
+  "James Wolff 'jwolff52' <james.wolff0@gmail.com>",
+  "dashwav <dashwav@gmail.com>",
+  "Amndeep Singh Mann 'Amndeep7' <me@asm.works>"
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+minoshiro = "^0.1.9"
+"discord.py" = "^1.7.3"
+pyyaml = "^6.0"
+asyncpg = "^0.26.0"
+
+[tool.poetry.scripts]
+discordoragi = "discordoragi.run:run"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
