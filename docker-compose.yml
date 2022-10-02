@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:14-alpine
+    restart: always
+    volumes:
+      - discordoragi_pgdata:/var/lib/postgresql/data
+    expose:
+      - "${DB_PORT}"
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+  test:
+    image: ubuntu:latest
+    depends_on:
+      - db
+    environment:
+      DB_USER: "${POSTGRES_USER}"
+      DB_PASSWORD: "${POSTGRES_PASSWORD}"
+      DB_DATABASE: "${POSTGRES_DB}"
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT}"
+    command: ["sleep", "infinity"]
+volumes:
+  discordoragi_pgdata:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "${DB_VOLUME}"

@@ -65,3 +65,12 @@ oauth.ini
 #Pycharm
 .idea
 .vscode
+
+# Vim
+**/*.swp
+
+# Configuration
+.env
+
+# Database
+pgdata/
