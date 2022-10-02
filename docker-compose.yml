@@ -16,11 +16,12 @@ services:
     depends_on:
       - db
     environment:
+      DB_URL: "${DB_URL}"
       DB_USER: "${POSTGRES_USER}"
       DB_PASSWORD: "${POSTGRES_PASSWORD}"
-      DB_DATABASE: "${POSTGRES_DB}"
       DB_HOST: "${DB_HOST}"
       DB_PORT: "${DB_PORT}"
+      DB_DATABASE: "${POSTGRES_DB}"
     command: ["sleep", "infinity"]
 volumes:
   discordoragi_pgdata:
