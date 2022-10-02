@@ -5,8 +5,8 @@ from discord.ext.commands import Bot
 import yaml
 from time import time
 from aiohttp_wrapper import SessionManager
-from helpers.discord_helpers import get_name_with_discriminator
-from helpers import PostgresController
+from ..helpers.discord_helpers import get_name_with_discriminator
+from ..helpers import PostgresController
 from logging import Formatter, INFO, StreamHandler, getLogger
 
 

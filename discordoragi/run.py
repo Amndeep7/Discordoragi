@@ -1,8 +1,8 @@
 """
 Actually runs the code
 """
-from bot import Discordoragi
-from cogs import Search
+from .bot import Discordoragi
+from .cogs import Search
 from asyncio import get_event_loop
 
 
